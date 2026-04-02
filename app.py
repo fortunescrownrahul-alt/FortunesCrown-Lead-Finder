@@ -16,7 +16,7 @@ import pandas as pd
 # ==========================================
 st.set_page_config(page_title="Nexus Lead Finder", page_icon="🔍", layout="wide")
 
-st.title("🔍 Nexus Lead Finder & Verifier (V4)")
+st.title("🔍 Fortunes Crown Lead Finder & Verifier")
 st.markdown("Automated B2B Lead Generation and Verification Tool.")
 
 # ==========================================
