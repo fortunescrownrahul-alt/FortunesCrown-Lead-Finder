@@ -1,3 +1,4 @@
+import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -11,6 +12,14 @@ import string
 import pandas as pd
 
 # ==========================================
+# PAGE CONFIGURATION
+# ==========================================
+st.set_page_config(page_title="Nexus Lead Finder", page_icon="🔍", layout="wide")
+
+st.title("🔍 Nexus Lead Finder & Verifier (V4)")
+st.markdown("Automated B2B Lead Generation and Verification Tool.")
+
+# ==========================================
 # 1. GENERATE ALL 35+ EMAIL PATTERNS
 # ==========================================
 def generate_emails(first_name, last_name, domain):
@@ -20,11 +29,10 @@ def generate_emails(first_name, last_name, domain):
     if not first or not last: 
         return []
     
-    fi = first[0] # First Initial
-    li = last[0]  # Last Initial
-    f2 = first[:2] if len(first) >= 2 else first # First two letters (for special corporate formats)
+    fi = first[0]
+    li = last[0]
+    f2 = first[:2] if len(first) >= 2 else first 
 
-    # All 34 Permutations + Special Formats
     return [
         f"{first}@{domain}", f"{last}@{domain}", f"{first}{last}@{domain}",
         f"{first}.{last}@{domain}", f"{fi}{last}@{domain}", f"{fi}.{last}@{domain}",
@@ -41,7 +49,7 @@ def generate_emails(first_name, last_name, domain):
     ]
 
 # ==========================================
-# 2. ADVANCED SMTP VERIFIER (WITH CATCH-ALL DETECTION)
+# 2. ADVANCED SMTP VERIFIER
 # ==========================================
 def verify_email(email, domain):
     try:
@@ -54,7 +62,7 @@ def verify_email(email, domain):
         server = smtplib.SMTP(timeout=3)
         server.connect(mx_record, 25)
         server.helo(socket.getfqdn())
-        server.mail('verifier@yourdomain.com') # Generic sender
+        server.mail('verifier@yourdomain.com') 
         code, message = server.rcpt(email)
         server.quit()
         return "✅ VALID" if code == 250 else "❌ Invalid"
@@ -62,16 +70,15 @@ def verify_email(email, domain):
         return "⚠️ Server Blocked/Timeout"
 
 def is_catch_all(domain):
-    """Pings a gibberish email to see if the server lies and accepts everything."""
     random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=12))
     fake_email = f"{random_str}@{domain}"
     status = verify_email(fake_email, domain)
     return "✅ VALID" in status
 
 # ==========================================
-# 3. THE BING STEALTH BYPASS SCRAPER
+# 3. BING STEALTH BYPASS SCRAPER
 # ==========================================
-def search_stealth_for_leader(domain, role):
+def search_stealth_for_leader(domain, role, status_placeholder):
     query = f'site:linkedin.com/in "{domain}" "{role}"'
     encoded_query = urllib.parse.quote_plus(query)
     url = f"https://www.bing.com/search?q={encoded_query}"
@@ -81,12 +88,11 @@ def search_stealth_for_leader(domain, role):
     }
     
     try:
-        print(f"   🔎 Website hidden. Engaging Stealth X-Ray for the {role}...")
-        time.sleep(1) # Human delay
+        status_placeholder.info(f"🔎 Engaging Stealth X-Ray for the {role}...")
+        time.sleep(1) 
         res = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(res.text, 'html.parser')
         
-        # Parse Bing results
         for a_tag in soup.find_all('a', href=True):
             href = a_tag['href']
             if "linkedin.com/in/" in href and "/dir/" not in href:
@@ -105,8 +111,8 @@ def search_stealth_for_leader(domain, role):
 # ==========================================
 # 4. FULL AUTOMATIC SCRAPER ENGINE
 # ==========================================
-def find_c_level_and_emails(domain):
-    print(f"\n🔍 Stage 1: Scanning {domain} website...")
+def find_c_level_and_emails(domain, status_placeholder):
+    status_placeholder.info(f"🔍 Stage 1: Scanning {domain} website...")
     start_url = f"https://{domain}" if not domain.startswith('http') else domain
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
 
@@ -147,32 +153,32 @@ def find_c_level_and_emails(domain):
                                 name = f"{words[0]} {words[1]}"
                                 if not any(junk in name.lower() for junk in junk_words) and len(name) < 25:
                                     found_leaders[job_title] = {"Name": name, "Direct_Email": direct_email, "Source": "Website"}
-                                    print(f"   ✅ Found {job_title} on site: {name}")
+                                    st.write(f"   ✅ Found {job_title} on site: {name}")
             except:
                 continue
     except Exception:
-        print("   ⚠️ Website failed to load. Switching entirely to Stealth X-Ray.")
+        status_placeholder.warning("   ⚠️ Website failed to load. Switching entirely to Stealth X-Ray.")
 
-    print(f"\n🔍 Stage 2: Checking Bing/LinkedIn for missing leaders...")
+    status_placeholder.info(f"🔍 Stage 2: Checking Bing/LinkedIn for missing leaders...")
     for kw, job_title in target_titles.items():
         if job_title not in found_leaders:
-            xray_name = search_stealth_for_leader(domain, job_title)
+            xray_name = search_stealth_for_leader(domain, job_title, status_placeholder)
             if xray_name:
                 found_leaders[job_title] = {"Name": xray_name, "Direct_Email": None, "Source": "Bing/LinkedIn"}
-                print(f"   ✅ Found {job_title} via X-Ray: {xray_name}")
+                st.write(f"   ✅ Found {job_title} via X-Ray: {xray_name}")
 
     if not found_leaders:
         return [{"Domain": domain, "Title": "None", "Name": "No leaders found", "Email": "N/A", "Status": "N/A"}]
 
-    print(f"\n🔍 Stage 3: Verifying MX Server Security for {domain}...")
+    status_placeholder.info(f"🔍 Stage 3: Verifying MX Server Security for {domain}...")
     catch_all = is_catch_all(domain)
     if catch_all:
-        print("   ⚠️ WARNING: This server is a 'Catch-All'. It will accept any email address.")
+        status_placeholder.warning("   ⚠️ WARNING: This server is a 'Catch-All'. It will accept any email address.")
     else:
-        print("   🟢 Server is strict. Email verification will be highly accurate.")
+        status_placeholder.success("   🟢 Server is strict. Email verification will be highly accurate.")
 
     results = []
-    print(f"\n🔍 Stage 4: Generating and verifying emails for {len(found_leaders)} leaders...\n")
+    status_placeholder.info(f"🔍 Stage 4: Generating and verifying emails for {len(found_leaders)} leaders...")
     
     for title, data in found_leaders.items():
         name = data['Name']
@@ -189,8 +195,6 @@ def find_c_level_and_emails(domain):
             continue
             
         emails_to_test = generate_emails(first, last, domain)
-        
-        # Explicitly declare fallback as the most common format in the world
         fallback_email = f"{first}.{last}@{domain}" 
         valid_email_found = False
         
@@ -201,12 +205,12 @@ def find_c_level_and_emails(domain):
                 if catch_all:
                     results.append({"Domain": domain, "Title": title, "Name": name, "Email": fallback_email, "Status": f"⚠️ Catch-All (Pattern Guessed)"})
                     valid_email_found = True
-                    print(f"   [CATCH-ALL] Best Guess: {fallback_email}")
+                    st.write(f"   [CATCH-ALL] Best Guess: {fallback_email}")
                     break
                 else:
                     results.append({"Domain": domain, "Title": title, "Name": name, "Email": email, "Status": f"✅ Verified SMTP ({data['Source']})"})
                     valid_email_found = True
-                    print(f"   [SUCCESS] Verified exactly: {email}")
+                    st.write(f"   [SUCCESS] Verified exactly: {email}")
                     break 
 
         if not valid_email_found:
@@ -215,115 +219,112 @@ def find_c_level_and_emails(domain):
     return results
 
 # ==========================================
-# 5. SPECIFIC PERSON VERIFIER
+# STREAMLIT UI & TABS
 # ==========================================
-def verify_specific_person(first_name, last_name, domain):
-    print(f"\n🔍 Checking Server Security for {domain}...")
-    catch_all = is_catch_all(domain)
-    
-    print(f"🔍 Generating and verifying 35+ patterns for {first_name} {last_name}...")
-    emails_to_test = generate_emails(first_name, last_name, domain)
-    
-    first = re.sub(r'[^a-zA-Z]', '', first_name.lower())
-    last = re.sub(r'[^a-zA-Z]', '', last_name.lower())
-    fallback_email = f"{first}.{last}@{domain}"
-    
-    results = []
-    valid_email_found = False
-    
-    for email in emails_to_test:
-        status = verify_email(email, domain)
-        if "✅ VALID" in status:
-            if catch_all:
-                results.append({"Domain": domain, "Title": "Targeted Lead", "Name": f"{first_name} {last_name}", "Email": fallback_email, "Status": "⚠️ Catch-All (Guessed)"})
-                print(f"   [CATCH-ALL] Server lies. Best pattern guess: {fallback_email}")
-            else:
-                results.append({"Domain": domain, "Title": "Targeted Lead", "Name": f"{first_name} {last_name}", "Email": email, "Status": "✅ Verified SMTP"})
-                print(f"   [SUCCESS] Verified exactly: {email}")
-            valid_email_found = True
-            break
-            
-    if not valid_email_found:
-         results.append({"Domain": domain, "Title": "Targeted Lead", "Name": f"{first_name} {last_name}", "Email": fallback_email, "Status": "Unverified Pattern"})
-         
-    return results
 
-# ==========================================
-# 6. DIRECT EMAIL VERIFIER
-# ==========================================
-def verify_direct_email(email):
-    print(f"\n🔍 Verifying email address: {email}...")
+tab1, tab2, tab3 = st.tabs(["1. Search by Domain", "2. Search by Name", "3. Verify Direct Email"])
+
+with tab1:
+    st.header("Search by Domain")
+    st.markdown("Finds the entire leadership team for a given company.")
     
-    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        print("   ❌ Invalid email format.")
-        return [{"Domain": "N/A", "Title": "Direct Verifier", "Name": "N/A", "Email": email, "Status": "❌ Invalid Format"}]
+    # 🔴 BUG FIX: Removed the "key" attribute!
+    domain_input = st.text_input("Enter Domain Name (e.g., apple.com)")
     
-    domain = email.split('@')[1]
-    
-    print(f"   Checking Server Security for {domain}...")
-    if is_catch_all(domain):
-        print(f"   ⚠️ [CATCH-ALL] The server for {domain} accepts all emails. Cannot confirm if {email} belongs to a real person.")
-        status = "⚠️ Catch-All Server"
-    else:
-        status = verify_email(email, domain)
-        if "✅ VALID" in status:
-            print(f"   [SUCCESS] {email} is active and valid!")
+    if st.button("Search Domain", type="primary"):
+        if domain_input:
+            status_placeholder = st.empty()
+            with st.spinner("Executing Search..."):
+                results = find_c_level_and_emails(domain_input, status_placeholder)
+                
+            if results:
+                df = pd.DataFrame(results)
+                st.dataframe(df, use_container_width=True)
+                
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download Results as CSV",
+                    data=csv,
+                    file_name=f'{domain_input}_leads.csv',
+                    mime='text/csv',
+                )
         else:
-            print(f"   [RESULT] {status}")
-        
-    return [{"Domain": domain, "Title": "Direct Verifier", "Name": "N/A", "Email": email, "Status": status}]
+            st.warning("Please enter a domain.")
 
-# ==========================================
-# MAIN MENU UI (CONTINUOUS LOOP)
-# ==========================================
-if __name__ == "__main__":
-    while True:
-        print("\n" + "="*50)
-        print("    NEXUS LEAD FINDER & VERIFIER (DISPLAY ONLY)")
-        print("="*50)
-        print("1. Search by Domain (Finds entire leadership team)")
-        print("2. Search by Name (Find email for specific person)")
-        print("3. Verify Direct Email (Check if an email is real)")
-        print("4. Exit Program ❌")
-        print("="*50)
-        
-        choice = input("Enter 1, 2, 3, or 4: ").strip()
-        data = []
-
-        if choice == '1':
-            target_domain = input("\nEnter domain name (e.g., apple.com): ").strip()
-            data = find_c_level_and_emails(target_domain)
-            
-        elif choice == '2':
-            first = input("\nEnter First Name: ").strip()
-            last = input("Enter Last Name: ").strip()
-            target_domain = input("Enter domain name (e.g., apple.com): ").strip()
-            data = verify_specific_person(first, last, target_domain)
-            
-        elif choice == '3':
-            target_email = input("\nEnter the email address to verify: ").strip()
-            data = verify_direct_email(target_email)
-            
-        elif choice == '4':
-            print("\n👋 Exiting Nexus Lead Finder. Goodbye!")
-            time.sleep(1)
-            break
+with tab2:
+    st.header("Search by Name")
+    st.markdown("Find and verify an email for a specific person.")
+    col1, col2 = st.columns(2)
+    with col1:
+        first_name_input = st.text_input("First Name")
+    with col2:
+        last_name_input = st.text_input("Last Name")
+    specific_domain_input = st.text_input("Company Domain (e.g., apple.com)")
+    
+    if st.button("Find Email", type="primary"):
+        if first_name_input and last_name_input and specific_domain_input:
+            status_placeholder = st.empty()
+            with st.spinner("Verifying Patterns..."):
+                status_placeholder.info(f"🔍 Checking Server Security for {specific_domain_input}...")
+                catch_all = is_catch_all(specific_domain_input)
+                
+                status_placeholder.info(f"🔍 Generating and verifying patterns...")
+                emails_to_test = generate_emails(first_name_input, last_name_input, specific_domain_input)
+                
+                first = re.sub(r'[^a-zA-Z]', '', first_name_input.lower())
+                last = re.sub(r'[^a-zA-Z]', '', last_name_input.lower())
+                fallback_email = f"{first}.{last}@{specific_domain_input}"
+                
+                results = []
+                valid_email_found = False
+                
+                for email in emails_to_test:
+                    status = verify_email(email, specific_domain_input)
+                    if "✅ VALID" in status:
+                        if catch_all:
+                            results.append({"Domain": specific_domain_input, "Title": "Targeted Lead", "Name": f"{first_name_input} {last_name_input}", "Email": fallback_email, "Status": "⚠️ Catch-All (Guessed)"})
+                            st.write(f"   [CATCH-ALL] Server lies. Best pattern guess: {fallback_email}")
+                        else:
+                            results.append({"Domain": specific_domain_input, "Title": "Targeted Lead", "Name": f"{first_name_input} {last_name_input}", "Email": email, "Status": "✅ Verified SMTP"})
+                            st.write(f"   [SUCCESS] Verified exactly: {email}")
+                        valid_email_found = True
+                        break
+                        
+                if not valid_email_found:
+                     results.append({"Domain": specific_domain_input, "Title": "Targeted Lead", "Name": f"{first_name_input} {last_name_input}", "Email": fallback_email, "Status": "Unverified Pattern"})
+                     
+            df = pd.DataFrame(results)
+            st.dataframe(df, use_container_width=True)
             
         else:
-            print("❌ Invalid choice. Please type 1, 2, 3, or 4.")
-            time.sleep(1.5)
-            continue
-        
-        # Beautiful Pandas Print Output (No file saving!)
-        if data:
-            print("\n")
-            df = pd.DataFrame(data)
-            # index=False hides the row numbers so the table looks much cleaner
-            print(df.to_string(index=False)) 
-                
-            print("\n" + "="*85)
-            print(f"   Found {len(data)} records. Displayed above.")
-            print("="*85)
-                
-        # Pauses before resetting the menu
-        input("\nPress ENTER to return to the Main Menu...")
+            st.warning("Please fill in all fields.")
+
+with tab3:
+    st.header("Verify Direct Email")
+    st.markdown("Check if a specific email address is real and active.")
+    verify_email_input = st.text_input("Enter Email Address")
+    
+    if st.button("Verify Email", type="primary"):
+        if verify_email_input:
+            with st.spinner("Checking Server..."):
+                if not re.match(r"[^@]+@[^@]+\.[^@]+", verify_email_input):
+                    st.error("❌ Invalid email format.")
+                else:
+                    domain = verify_email_input.split('@')[1]
+                    
+                    st.info(f"Checking Server Security for {domain}...")
+                    if is_catch_all(domain):
+                        st.warning(f"⚠️ [CATCH-ALL] The server for {domain} accepts all emails. Cannot confirm if {verify_email_input} belongs to a real person.")
+                        status = "⚠️ Catch-All Server"
+                    else:
+                        status = verify_email(verify_email_input, domain)
+                        if "✅ VALID" in status:
+                            st.success(f"✅ [SUCCESS] {verify_email_input} is active and valid!")
+                        else:
+                            st.error(f"❌ [RESULT] {status}")
+                            
+                    results = [{"Domain": domain, "Title": "Direct Verifier", "Name": "N/A", "Email": verify_email_input, "Status": status}]
+                    df = pd.DataFrame(results)
+                    st.dataframe(df, use_container_width=True)
+        else:
+            st.warning("Please enter an email address.")
