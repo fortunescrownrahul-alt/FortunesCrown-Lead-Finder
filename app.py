@@ -12,6 +12,18 @@ import string
 import pandas as pd
 
 # ==========================================
+# PAGE CONFIGURATION & BUG FIXES
+# ==========================================
+st.set_page_config(page_title="Nexus Lead Finder", page_icon="🔍", layout="wide")
+
+# This fixes the "KeyError" by setting up the memory before the app loads
+if "domain_search" not in st.session_state:
+    st.session_state["domain_search"] = ""
+
+st.title("🔍 Nexus Lead Finder & Verifier (V4)")
+st.markdown("Automated B2B Lead Generation and Verification Tool.")
+
+# ==========================================
 # 1. GENERATE ALL 35+ EMAIL PATTERNS
 # ==========================================
 def generate_emails(first_name, last_name, domain):
@@ -41,7 +53,7 @@ def generate_emails(first_name, last_name, domain):
     ]
 
 # ==========================================
-# 2. ADVANCED SMTP VERIFIER (WITH CATCH-ALL DETECTION)
+# 2. ADVANCED SMTP VERIFIER
 # ==========================================
 def verify_email(email, domain):
     try:
@@ -68,7 +80,7 @@ def is_catch_all(domain):
     return "✅ VALID" in status
 
 # ==========================================
-# 3. THE BING STEALTH BYPASS SCRAPER
+# 3. BING STEALTH BYPASS SCRAPER
 # ==========================================
 def search_stealth_for_leader(domain, role, status_placeholder):
     query = f'site:linkedin.com/in "{domain}" "{role}"'
@@ -211,12 +223,8 @@ def find_c_level_and_emails(domain, status_placeholder):
     return results
 
 # ==========================================
-# STREAMLIT UI
+# STREAMLIT UI & TABS
 # ==========================================
-st.set_page_config(page_title="Nexus Lead Finder", page_icon="🔍", layout="wide")
-
-st.title("🔍 Nexus Lead Finder & Verifier (V4)")
-st.markdown("Automated B2B Lead Generation and Verification Tool.")
 
 # Create Tabs for the different modes
 tab1, tab2, tab3 = st.tabs(["1. Search by Domain", "2. Search by Name", "3. Verify Direct Email"])
@@ -224,7 +232,7 @@ tab1, tab2, tab3 = st.tabs(["1. Search by Domain", "2. Search by Name", "3. Veri
 with tab1:
     st.header("Search by Domain")
     st.markdown("Finds the entire leadership team for a given company.")
-    domain_input = st.text_input("Enter Domain Name (e.g., apple.com)", key="domain_search")
+    domain_input = st.text_input("Enter Domain Name (e.g., apple.com)", key="domain_search_input")
     
     if st.button("Search Domain", type="primary"):
         if domain_input:
