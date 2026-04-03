@@ -14,9 +14,9 @@ import pandas as pd
 # ==========================================
 # PAGE CONFIGURATION
 # ==========================================
-st.set_page_config(page_title="Fortunes Crown Lead Finder", page_icon="🔍", layout="wide")
+st.set_page_config(page_title="MagBizz Lead Finder", page_icon="🔍", layout="wide")
 
-st.title("🔍 Fortunes Crown Lead Finder & Verifier")
+st.title("🔍 MagBizz Lead Finder & Verifier")
 st.markdown("Automated B2B Lead Generation and Verification Tool.")
 
 # ==========================================
