@@ -1,4 +1,16 @@
 import streamlit as st
+
+# Define the custom CSS to hide the Streamlit elements
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+
+# Inject the CSS into the app
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 import requests
 from bs4 import BeautifulSoup
 import re
